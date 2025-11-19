@@ -5,8 +5,6 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import config.Config;
-import model.Track;
-import model.AudioFeatures;
 
 import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
@@ -97,6 +95,75 @@ public class SpotifyAPIClient {
     }
 
     /**
+     * Search for Artist's top tracks
+     */
+    public List<Track> getArtistsTopTracks(String artistID) throws IOException {
+        ensureValidToken();
+
+        List<Track> tracks = new ArrayList<>();
+
+        String url = String.format("%s/artists/%s/top-tracks?market=US", Config.API_BASE_URL, artistID);
+
+        HttpGet httpGet = new HttpGet(url);
+        httpGet.setHeader("Authorization", "Bearer " + accessToken);
+
+        try (CloseableHttpResponse response = httpClient.execute(httpGet)) {
+            try {
+                String jsonResponse = EntityUtils.toString(response.getEntity());
+                JsonObject root = JsonParser.parseString(jsonResponse).getAsJsonObject();
+
+                if (!root.has("tracks")) {
+                    return tracks;
+                }
+
+                JsonArray items = root.getAsJsonArray("tracks");
+
+                for (JsonElement element : items) {
+                    JsonObject item = element.getAsJsonObject();
+                    Track track = parseTrackFromJson(item);
+                    tracks.add(track);
+                }
+
+                return tracks;
+
+            } catch (ParseException e) {
+                throw new IOException("Failed to parse JSON response", e);
+            }
+        }
+    }
+
+    public String getArtistID(String artist) throws IOException {
+        ensureValidToken();
+
+        String encodedQuery = URLEncoder.encode(artist, StandardCharsets.UTF_8);
+        String url = String.format("%s/search?q=%s&type=artist&limit=%d",
+                Config.API_BASE_URL, encodedQuery, Config.TRACK_POOL_SIZE);
+
+        HttpGet httpGet = new HttpGet(url);
+        httpGet.setHeader("Authorization", "Bearer " + accessToken);
+
+        try (CloseableHttpResponse response = httpClient.execute(httpGet)) {
+            try{
+                String jsonResponse = EntityUtils.toString(response.getEntity());
+                JsonObject root = JsonParser.parseString(jsonResponse).getAsJsonObject();
+
+                if (!root.has("artists")) {
+                    return "No Artist Found";
+                }
+
+                JsonObject item = root.getAsJsonObject("artists").getAsJsonArray("items").get(0).getAsJsonObject();
+
+                return item.get("id").getAsString();
+
+            } catch (ParseException e){
+                throw new IOException("Failed to parse JSON response", e);
+            }
+
+        }
+    }
+
+
+    /**
      * Parse Track objects from JSON search response
      */
     private List<Track> parseTracksFromSearchResponse(String jsonResponse) {
@@ -141,108 +208,6 @@ public class SpotifyAPIClient {
         return track;
     }
 
-    /**
-     * Get audio features for a specific track
-     * This is the KEY method for building recommendations!
-     */
-    public AudioFeatures getAudioFeatures(String trackId) throws IOException {
-        ensureValidToken();
-
-        String url = String.format("%s/audio-features/%s", Config.API_BASE_URL, trackId);
-
-        HttpGet httpGet = new HttpGet(url);
-        httpGet.setHeader("Authorization", "Bearer " + accessToken);
-
-        try (CloseableHttpResponse response = httpClient.execute(httpGet)) {
-            try {
-                String jsonResponse = EntityUtils.toString(response.getEntity());
-                JsonObject json = JsonParser.parseString(jsonResponse).getAsJsonObject();
-
-                AudioFeatures features = new AudioFeatures(trackId);
-
-                // Helper to safely get double
-                features.setDanceability(getDoubleOrDefault(json, "danceability", 0.0));
-                features.setEnergy(getDoubleOrDefault(json, "energy", 0.0));
-                features.setValence(getDoubleOrDefault(json, "valence", 0.0));
-                features.setTempo(getDoubleOrDefault(json, "tempo", 0.0));
-                features.setAcousticness(getDoubleOrDefault(json, "acousticness", 0.0));
-                features.setInstrumentalness(getDoubleOrDefault(json, "instrumentalness", 0.0));
-                features.setLiveness(getDoubleOrDefault(json, "liveness", 0.0));
-                features.setSpeechiness(getDoubleOrDefault(json, "speechiness", 0.0));
-
-                features.setKey(json.has("key") && !json.get("key").isJsonNull() ? json.get("key").getAsInt() : 0);
-                features.setMode(json.has("mode") && !json.get("mode").isJsonNull() ? json.get("mode").getAsInt() : 0);
-
-                return features;
-
-            } catch (ParseException e) {
-                throw new IOException("Failed to parse JSON response", e);
-            }
-        }
-    }
-
-    // Helper method
-    private double getDoubleOrDefault(JsonObject json, String key, double defaultValue) {
-        if (json.has(key) && !json.get(key).isJsonNull()) {
-            return json.get(key).getAsDouble();
-        }
-        return defaultValue;
-    }
-
-
-    /**
-     * Get audio features for multiple tracks in batch
-     * More efficient than individual requests
-     */
-    public List<AudioFeatures> getBatchAudioFeatures(List<String> trackIds) throws IOException {
-        ensureValidToken();
-
-        // Spotify allows max 100 IDs per request
-        List<AudioFeatures> allFeatures = new ArrayList<>();
-
-        for (int i = 0; i < trackIds.size(); i += 100) {
-            int end = Math.min(i + 100, trackIds.size());
-            List<String> batch = trackIds.subList(i, end);
-            String ids = String.join(",", batch);
-
-            String url = String.format("%s/audio-features?ids=%s", Config.API_BASE_URL, ids);
-
-            HttpGet httpGet = new HttpGet(url);
-            httpGet.setHeader("Authorization", "Bearer " + accessToken);
-
-            try (CloseableHttpResponse response = httpClient.execute(httpGet)) {
-                try{
-                    String jsonResponse = EntityUtils.toString(response.getEntity());
-                    JsonObject root = JsonParser.parseString(jsonResponse).getAsJsonObject();
-                    JsonArray features = root.getAsJsonArray("audio_features");
-
-                    for (JsonElement element : features) {
-                        if (element.isJsonNull()) continue;
-
-                        JsonObject json = element.getAsJsonObject();
-                        AudioFeatures af = new AudioFeatures(json.get("id").getAsString());
-                        af.setDanceability(getDoubleOrDefault(json, "danceability", 0.0));
-                        af.setEnergy(getDoubleOrDefault(json, "energy", 0.0));
-                        af.setValence(getDoubleOrDefault(json, "valence", 0.0));
-                        af.setTempo(getDoubleOrDefault(json, "tempo", 0.0));
-                        af.setAcousticness(getDoubleOrDefault(json, "acousticness", 0.0));
-                        af.setInstrumentalness(getDoubleOrDefault(json, "instrumentalness", 0.0));
-                        af.setLiveness(getDoubleOrDefault(json, "liveness", 0.0));
-                        af.setSpeechiness(getDoubleOrDefault(json, "speechiness", 0.0));
-
-                        af.setKey(json.has("key") && !json.get("key").isJsonNull() ? json.get("key").getAsInt() : 0);
-                        af.setMode(json.has("mode") && !json.get("mode").isJsonNull() ? json.get("mode").getAsInt() : 0);
-
-                    }
-                }catch (ParseException e){
-                    throw new IOException("Failed to parse JSON response", e);
-                }
-
-            }
-        }
-
-        return allFeatures;
-    }
 
     public void close() throws IOException {
         if (httpClient != null) {

@@ -23,7 +23,7 @@ public class MainController {
             apiClient.authenticate();
 
             // Default strategy
-            RecommendationStrategy strategy = new AudioSimilarityStrategy();
+            RecommendationStrategy strategy = new ArtistSimilarityStrategy();
 
             RecommendationEngine engine = new RecommendationEngine(strategy, apiClient);
 
@@ -68,19 +68,19 @@ public class MainController {
 
                 // Ask for strategy
                 System.out.println("\nChoose Recommendation Strategy:");
-                System.out.println("1) Audio Similarity-Based");
+                System.out.println("1) Artist's Top Tracks");
                 System.out.println("2) Popularity-Based");
                 System.out.print("Enter choice: ");
 
                 String strat = scanner.nextLine();
 
                 if (strat.equals("1")) {
-                    engine.setStrategy(new AudioSimilarityStrategy());
+                    engine.setStrategy(new ArtistSimilarityStrategy());
                 } else if (strat.equals("2")) {
                     engine.setStrategy(new PopularityBasedStrategy());
                 } else {
-                    System.out.println("Invalid. Using default Audio Similarity.");
-                    engine.setStrategy(new AudioSimilarityStrategy());
+                    System.out.println("Invalid. Using default Artist's Top Tracks.");
+                    engine.setStrategy(new ArtistSimilarityStrategy());
                 }
 
                 // Get recommendations

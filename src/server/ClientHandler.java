@@ -2,10 +2,7 @@ package server;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
-import model.SpotifyAPIClient;
-import model.Track;
-import model.AudioSimilarityStrategy;
-import model.RecommendationEngine;
+import model.*;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -30,7 +27,7 @@ public class ClientHandler implements Runnable {
         this.clientSocket = socket;
         this.apiClient = apiClient;
         this.recommendationEngine = new RecommendationEngine(
-                new AudioSimilarityStrategy(), apiClient);
+                new ArtistSimilarityStrategy(), apiClient);
         this.gson = new Gson();
         this.clientId = nextClientId++;
     }

@@ -6,11 +6,7 @@ import javafx.geometry.Insets;
 import javafx.scene.control.*;
 import javafx.scene.input.MouseButton;
 import javafx.scene.layout.*;
-import model.RecommendationEngine;
-import model.Track;
-import model.RecommendationStrategy;
-import model.PopularityBasedStrategy;
-import model.AudioSimilarityStrategy;
+import model.*;
 import service.APIService;
 
 import java.io.IOException;
@@ -54,7 +50,7 @@ public class RecommendationPanel {
         // Strategy + recommend button
         strategyLabel = new Label("Current Strategy: Popularity");
         recommendButton = new Button("Get Recommendations");
-        switchStrategyButton = new Button("Switch to Audio Similarity");
+        switchStrategyButton = new Button("Switch to Artist Top Track");
 
         topBox.getChildren().addAll(searchBar, strategyLabel, recommendButton, switchStrategyButton);
 
@@ -129,16 +125,16 @@ public class RecommendationPanel {
 
     private void switchStrategy() {
         if (usingPopularity) {
-            RecommendationStrategy audioStrategy = new AudioSimilarityStrategy();
-            recommendationEngine.setStrategy(audioStrategy);
-            strategyLabel.setText("Current Strategy: Audio Similarity");
+            RecommendationStrategy artistStrategy = new ArtistSimilarityStrategy();
+            recommendationEngine.setStrategy(artistStrategy);
+            strategyLabel.setText("Current Strategy: Artist's Top Track");
             switchStrategyButton.setText("Switch to Popularity");
             usingPopularity = false;
         } else {
             RecommendationStrategy popStrategy = new PopularityBasedStrategy();
             recommendationEngine.setStrategy(popStrategy);
             strategyLabel.setText("Current Strategy: Popularity");
-            switchStrategyButton.setText("Switch to Audio Similarity");
+            switchStrategyButton.setText("Switch to Artist's Top Track");
             usingPopularity = true;
         }
     }

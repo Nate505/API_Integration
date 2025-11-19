@@ -15,7 +15,6 @@ public class Track {
     private int durationMs;
     private int popularity;
     private String previewUrl;
-    private AudioFeatures audioFeatures;
 
     // Constructor
     public Track(String id, String name, List<String> artists, String albumName) {
@@ -82,13 +81,6 @@ public class Track {
         this.previewUrl = previewUrl;
     }
 
-    public AudioFeatures getAudioFeatures() {
-        return audioFeatures;
-    }
-
-    public void setAudioFeatures(AudioFeatures audioFeatures) {
-        this.audioFeatures = audioFeatures;
-    }
 
     @Override
     public String toString() {
