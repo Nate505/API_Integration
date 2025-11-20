@@ -25,7 +25,7 @@ class RecommenderTest {
 
         client = new SpotifyAPIClient();
 
-        seedTrack = new Track("6hWYYkgRr52crvRPi3U8kg", "Odo", List.of("Ado"), "Kyogen");
+        seedTrack = new Track("6hWYYkgRr52crvRPi3U8kg", "Odo", List.of("Ado"), "Kyougen");
     }
 
     @Test
@@ -64,5 +64,34 @@ class RecommenderTest {
 
         assertFalse(recommendations.isEmpty(), "Recommendations list should not be empty");
     }
+
+    @Test
+    void testSearchTracks() throws IOException {
+        List<Track> song = client.searchTracks("Odo - Ado", 50);
+
+        boolean sameSong = seedTrack.toString().equals(song.get(0).toString());
+
+        assertTrue(sameSong, "Tracks should be same");
+    }
+
+    @Test
+    void testTopTracksSearch() throws IOException {
+        String artistID = client .getArtistID("Ado");
+        List<Track> song = client.getArtistsTopTracks(artistID);
+        boolean sameArtist = true;
+
+        for(Track track : song) {
+            if(!track.getArtists().toString().contains(seedTrack.getArtists().toString())) {
+                sameArtist = false;
+                if(track.getArtists().get(0).toString().equals("Imagine Dragons") && track.getArtists().get(1).toString().equals(seedTrack.getArtists().get(0).toString())) {
+                    sameArtist = true;
+                }
+            }
+        }
+
+        assertTrue(sameArtist, "Top tracks should be same");
+    }
+
+
 
 }
