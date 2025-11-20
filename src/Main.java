@@ -3,7 +3,7 @@ import javafx.stage.Stage;
 import model.SpotifyAPIClient;
 import model.RecommendationEngine;
 import model.RecommendationStrategy;
-import model.PopularityBasedStrategy; // or another default strategy you have
+import model.PopularityBasedStrategy;
 import service.APIService;
 import view.MainFrame;
 import view.RecommendationPanel;
