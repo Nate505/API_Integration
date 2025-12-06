@@ -8,6 +8,7 @@ import config.Config;
 
 import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.client5.http.classic.methods.HttpPut;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
@@ -18,9 +19,7 @@ import org.apache.hc.core5.http.io.entity.StringEntity;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.List;
+import java.util.*;
 
 /**
  * REST API Client for Spotify Web API
@@ -28,11 +27,25 @@ import java.util.List;
  */
 public class SpotifyAPIClient {
     private String accessToken;
+    private String refreshToken;
     private long tokenExpirationTime;
     private final CloseableHttpClient httpClient;
+    private HashMap <String, String> deviceName = new HashMap<>();
 
     public SpotifyAPIClient() {
         this.httpClient = HttpClients.createDefault();
+    }
+
+    public void setAccessToken(String accessToken) {
+        this.accessToken = accessToken;
+    }
+
+    public void setRefreshToken(String refreshToken) {
+        this.refreshToken = refreshToken;
+    }
+
+    public void setTokenExpirationTime(long tokenExpirationTime) {
+        this.tokenExpirationTime = tokenExpirationTime;
     }
 
     /**
@@ -159,6 +172,80 @@ public class SpotifyAPIClient {
                 throw new IOException("Failed to parse JSON response", e);
             }
 
+        }
+    }
+
+    public String getDeviceID(String name) {
+        return deviceName.get(name);
+    }
+
+    public String[] getDeviceName(String token) throws IOException {
+        ensureValidToken();
+
+        String url = String.format("%s/me/player/devices", Config.API_BASE_URL);
+
+        HttpGet httpGet = new HttpGet(url);
+        httpGet.setHeader("Authorization", "Bearer " + token);
+
+        try (CloseableHttpResponse response = httpClient.execute(httpGet)) {
+            try{
+                String jsonResponse = EntityUtils.toString(response.getEntity());
+                JsonObject root = JsonParser.parseString(jsonResponse).getAsJsonObject();
+
+                JsonArray devices = root.getAsJsonArray("devices");
+                int deviceSize = devices.size();
+
+                String[] deviceNames = new String[deviceSize];
+
+                for(int i = 0; i < deviceSize; i++) {
+                    JsonObject device = devices.get(i).getAsJsonObject();
+                    deviceNames[i] = device.get("name").getAsString();
+                    deviceName.put(deviceNames[i], device.get("id").getAsString());
+                }
+
+                return deviceNames;
+
+            } catch (ParseException e){
+                throw new IOException("Failed to parse JSON response", e);
+            }
+
+        }
+    }
+
+    public void playSong(String deviceID, String songID, String token) throws IOException {
+        ensureValidToken();
+
+        String trackUri = "spotify:track:" + songID;
+
+        String url = Config.API_BASE_URL + "/me/player/play?device_id=" + deviceID;
+
+        HttpPut httpPut = new HttpPut(url);
+        httpPut.setHeader("Authorization", "Bearer " + token);
+        httpPut.setHeader("Content-Type", "application/json");
+
+        String jsonBody = "{ \"uris\": [\"" + trackUri + "\"], \"position_ms\": 0 }";
+        httpPut.setEntity(new StringEntity(jsonBody));
+
+        try (CloseableHttpResponse response = httpClient.execute(httpPut)) {
+            int status = response.getCode();
+            System.out.println("Status: " + status);
+        }
+    }
+
+    public void pauseSong(String token) throws IOException {
+        ensureValidToken();
+
+        String url = String.format("%s/me/player/pause", Config.API_BASE_URL);
+
+        HttpPut httpPut = new HttpPut(url);
+        httpPut.setHeader("Authorization", "Bearer " + token);
+
+        String jsonBody = "";
+        httpPut.setEntity(new StringEntity(jsonBody));
+
+        try (CloseableHttpResponse response = httpClient.execute(httpPut)) {
+            int status = response.getCode();
+            System.out.println("Status: " + status);
         }
     }
 

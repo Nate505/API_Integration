@@ -8,6 +8,7 @@ import javafx.scene.input.MouseButton;
 import javafx.scene.layout.*;
 import model.*;
 import service.APIService;
+import service.SpotifyAuthService;
 
 import java.io.IOException;
 import java.util.List;
@@ -15,6 +16,8 @@ import java.util.List;
 public class RecommendationPanel {
 
     private final APIService apiService;
+    private final SpotifyAuthService auth = new SpotifyAuthService();
+    private final SpotifyAPIClient apiClient = new SpotifyAPIClient();
     private final RecommendationEngine recommendationEngine;
     private final BorderPane root;
 
@@ -27,6 +30,12 @@ public class RecommendationPanel {
     private final ListView<Track> searchResultsList;
     private final ListView<Track> recommendationsList;
     private final Label statusLabel;
+
+    private final ComboBox<String> deviceDropdown;
+    private final Button playButton;
+    private final Button pauseButton;
+    private final Label functionLabel;
+    private final Button loginButton;
 
     private boolean usingPopularity = true;
 
@@ -52,7 +61,19 @@ public class RecommendationPanel {
         recommendButton = new Button("Get Recommendations");
         switchStrategyButton = new Button("Switch to Artist Top Track");
 
-        topBox.getChildren().addAll(searchBar, strategyLabel, recommendButton, switchStrategyButton);
+        //Device Dropdown
+        deviceDropdown = new ComboBox<>();
+        playButton = new Button("Play");
+        pauseButton = new  Button("Pause");
+
+        deviceDropdown.setVisible(false);
+        playButton.setVisible(false);
+        pauseButton.setVisible(false);
+
+        loginButton = new Button("Login with Spotify");
+        functionLabel = new Label("Login with Spotify to Play Song directly to your device, ONLY if you have Spotify Premium");
+
+        topBox.getChildren().addAll(searchBar, strategyLabel, recommendButton, switchStrategyButton, deviceDropdown, playButton, pauseButton, loginButton, functionLabel);
 
         // --- Center: split view ---
         HBox center = new HBox(10);
@@ -99,6 +120,17 @@ public class RecommendationPanel {
         searchField.setOnAction(e -> doSearch());
         recommendButton.setOnAction(e -> fetchRecommendations());
         switchStrategyButton.setOnAction(e -> switchStrategy());
+
+        playButton.setOnAction(e -> playSelectedTrack(deviceDropdown));
+        pauseButton.setOnAction(e -> pauseTrack());
+
+        loginButton.setOnAction(e -> {
+            try {
+                beginLogin();
+            } catch (Exception ex) {
+                throw new RuntimeException(ex);
+            }
+        });
 
         // Enable recommend button only when a track is selected
         recommendButton.setDisable(true);
@@ -192,6 +224,7 @@ public class RecommendationPanel {
             List<Track> recs = task.getValue();
             recommendationsList.getItems().setAll(recs);
             setStatus("Got " + recs.size() + " recommendations for: " + seed.getName());
+            System.out.println(recs.get(0).getId());
         });
 
         task.setOnFailed(ev -> {
@@ -200,5 +233,88 @@ public class RecommendationPanel {
         });
 
         new Thread(task).start();
+    }
+
+    private void playSelectedTrack(ComboBox<String> dropdown) {
+        setStatus("Playing selected track...");
+
+        Track selectedTrack = recommendationsList.getSelectionModel().getSelectedItem();
+
+        if (selectedTrack == null) {
+            selectedTrack = searchResultsList.getSelectionModel().getSelectedItem();
+        }
+
+        String deviceSelected = dropdown.getSelectionModel().getSelectedItem();
+
+        if (selectedTrack == null) {
+            setStatus("Please select a track from the search results.");
+            return;
+        }
+
+        if(deviceSelected == null) {
+            setStatus("Please select a device from the dropdown");
+            return;
+        }
+
+        String deviceID = apiClient.getDeviceID(deviceSelected);
+
+        try{
+            apiClient.playSong(deviceID, selectedTrack.getId(), auth.getAccessToken());
+        }catch (IOException e){
+            e.printStackTrace();
+        }
+    }
+
+    private void pauseTrack() {
+        setStatus("Pausing selected track...");
+
+        try{
+            apiClient.pauseSong(auth.getAccessToken());
+        }catch (IOException e){
+            e.printStackTrace();
+        }
+    }
+
+    private void beginLogin() {
+        new Thread(() -> {
+            try {
+                auth.login();
+
+                // Wait until token is available
+                while (!auth.isLoggedIn()) {
+                    Thread.sleep(200);
+                }
+
+                Platform.runLater(() -> {
+                    try {
+                        showPostLoginUI();
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                });
+
+                loginButton.setDisable(false);
+                loginButton.setVisible(false);
+
+                functionLabel.setVisible(false);
+
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }).start();
+    }
+
+    private void showPostLoginUI() throws IOException {
+        try {
+            String[] devices = apiClient.getDeviceName(auth.getAccessToken());
+            deviceDropdown.getItems().setAll(devices);
+
+            deviceDropdown.setVisible(true);
+            playButton.setVisible(true);
+            pauseButton.setVisible(true);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }
