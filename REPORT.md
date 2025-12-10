@@ -22,6 +22,11 @@ Used Copilot to help/guide me code JavaFX portion, since I didn't know a lot of 
 - Modified: Changed their code so that I could use the API Service/API Client myself
 - Verified: JavaFX came out like what I wanted it to be
 
-## Time Spent: ~35 hours
+Used ChatGPT to help/guide me with the spotify log in/authenticating to get the user's access token
+- Asked: "Help guide me code a spotify authentication system as I need the access code, DO NOT GIVE ME THE ENTIRE CODE"
+- Modified: Changed their code a little bit so that after logging in there is a text saying you are done, and also modified it so I could get access token to use it in the API Client
+- Verified: Was able to log in
+
+## Time Spent: ~50 hours
 
 
