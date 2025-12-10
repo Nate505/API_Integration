@@ -10,10 +10,14 @@ public class Config {
     public static final String API_BASE_URL = "https://api.spotify.com/v1";
 
     // Server Configuration
-    public static final int SERVER_PORT = 8888;
-    public static final String SERVER_HOST = "localhost";
+    public static final int SERVER_PORT = 5050;
+    public static final String SERVER_HOST = "https://127.0.0.1";
+
+    public static final String REDIRECT_URI = "http://127.0.0.1:5050/callback";
 
     // Recommendation Settings
     public static final int TRACK_POOL_SIZE = 50; // Tracks to analyze for recommendations
     public static final int DEFAULT_RECOMMENDATIONS = 10;
+
+    public static final String AUTH_URL = "https://accounts.spotify.com/authorize";
 }
